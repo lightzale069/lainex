@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Lainex AI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { obsidian: '#0a0a0f', neon: '#00f0ff', volt: '#a855f7' },
+      fontFamily: { sans: ['Space Grotesk', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] }
+    } }
+  }
+</script>
+<style>
+  :root { --cyan:#00f0ff; --purple:#a855f7; --bg:#0a0a0f; }
+  html, body { height: 100%; background: var(--bg); color: #e6e8ef; font-family: 'Space Grotesk', sans-serif; overscroll-behavior: none; }
+  body::before { /* grid */
+    content:''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(0,240,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 80%);
+  }
+  body::after { /* scanlines */
+    content:''; position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity:.35;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.025) 0, rgba(255,255,255,.025) 1px, transparent 1px, transparent 3px);
+  }
+  .orb { position: fixed; border-radius: 9999px; filter: blur(110px); opacity: .28; z-index: 0; pointer-events: none; animation: float 14s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translate(0,0) } 50% { transform: translate(30px,-40px) } }
+
+  .glass { background: rgba(18,18,30,.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,.07); }
+  .glass-strong { background: rgba(12,12,22,.8); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid rgba(0,240,255,.14); }
+  .neon-text { background: linear-gradient(90deg, var(--cyan), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .neon-btn { background: linear-gradient(135deg, rgba(0,240,255,.9), rgba(168,85,247,.95)); color: #05050a; font-weight: 600; transition: transform .2s, box-shadow .2s, filter .2s; box-shadow: 0 0 18px rgba(0,240,255,.25), 0 0 28px rgba(168,85,247,.2); }
+  .neon-btn:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: 0 0 24px rgba(0,240,255,.45), 0 0 40px rgba(168,85,247,.35); }
+  .neon-btn:active { transform: translateY(0) scale(.98); }
+  .neon-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .ghost-btn { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); transition: all .2s; }
+  .ghost-btn:hover { border-color: rgba(0,240,255,.5); background: rgba(0,240,255,.07); }
+
+  .session { transition: all .2s; border: 1px solid transparent; }
+  .session:hover { background: rgba(255,255,255,.05); }
+  .session.active { background: linear-gradient(90deg, rgba(0,240,255,.12), rgba(168,85,247,.1)); border-color: rgba(0,240,255,.3); }
+  .session .del { opacity: 0; transition: opacity .15s; }
+  .session:hover .del, .session.active .del { opacity: .7; }
+  .session .del:hover { opacity: 1; color: #ff4d6d; }
+
+  .bubble-user { background: linear-gradient(135deg, rgba(168,85,247,.28), rgba(0,240,255,.14)); border: 1px solid rgba(168,85,247,.35); }
+  .bubble-ai { background: rgba(18,18,30,.6); border: 1px solid rgba(255,255,255,.07); }
+  .msg { animation: rise .35s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .md p { margin: .45em 0; line-height: 1.65; }
+  .md h1, .md h2, .md h3 { font-weight: 700; margin: .9em 0 .35em; background: linear-gradient(90deg, var(--cyan), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .md h1 { font-size: 1.35rem; } .md h2 { font-size: 1.18rem; } .md h3 { font-size: 1.05rem; }
+  .md ul, .md ol { margin: .4em 0 .4em 1.3em; } .md ul { list-style: none; } .md ol { list-style: decimal; }
+  .md ul li { position: relative; margin: .25em 0; line-height: 1.6; }
+  .md ul li::before { content: '▸'; position: absolute; left: -1.1em; color: var(--cyan); }
+  .md ol li { margin: .25em 0; line-height: 1.6; } .md ol li::marker { color: var(--cyan); font-family: 'JetBrains Mono'; }
+  .md blockquote { border-left: 3px solid var(--purple); padding: .2em 0 .2em .9em; margin: .6em 0; color: #aab; background: rgba(168,85,247,.06); border-radius: 0 8px 8px 0; }
+  .md a { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
+  .md strong { color: #fff; } .md hr { border: 0; border-top: 1px solid rgba(255,255,255,.1); margin: 1em 0; }
+  .md code { font-family: 'JetBrains Mono', monospace; font-size: .86em; background: rgba(0,240,255,.09); color: #7df9ff; padding: .12em .4em; border-radius: 5px; }
+  .codeblock { margin: .7em 0; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,240,255,.18); background: #07070d; }
+  .cb-head { display: flex; justify-content: space-between; align-items: center; padding: .4rem .8rem; background: rgba(0,240,255,.06); font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: #8aa; text-transform: uppercase; letter-spacing: .08em; }
+  .copy-btn { font-size: .72rem; padding: .15rem .6rem; border-radius: 6px; border: 1px solid rgba(0,240,255,.35); color: var(--cyan); transition: all .2s; text-transform: none; letter-spacing: 0; }
+  .copy-btn:hover { background: rgba(0,240,255,.15); } .copy-btn.done { color: #5dff9a; border-color: #5dff9a; }
+  .codeblock pre { padding: .9rem 1rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: .83rem; line-height: 1.55; }
+  .codeblock pre code { background: none; color: #d5e6ff; padding: 0; font-size: inherit; }
+
+  .cursor { display: inline-block; width: .55em; height: 1.05em; vertical-align: text-bottom; background: var(--cyan); margin-left: 2px; animation: blink 1s steps(2) infinite; box-shadow: 0 0 8px var(--cyan); }
+  @keyframes blink { 50% { opacity: 0; } }
+  .dots span { display:inline-block; width:6px; height:6px; border-radius:9999px; background: var(--cyan); margin-right:4px; animation: bounce 1.2s infinite; box-shadow: 0 0 8px var(--cyan); }
+  .dots span:nth-child(2) { animation-delay: .15s; background: var(--purple); } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity:.5 } 30% { transform: translateY(-6px); opacity:1 } }
+
+  .shimmer { background: linear-gradient(110deg, rgba(255,255,255,.04) 30%, rgba(0,240,255,.15) 50%, rgba(255,255,255,.04) 70%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .toggle { position: relative; width: 40px; height: 22px; border-radius: 9999px; background: rgba(255,255,255,.1); transition: background .25s; flex-shrink: 0; }
+  .toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:9999px; background:#fff; transition: transform .25s; }
+  .toggle.on { background: linear-gradient(90deg, var(--cyan), var(--purple)); box-shadow: 0 0 14px rgba(0,240,255,.5); }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .inputbar { transition: border-color .25s, box-shadow .25s; }
+  .inputbar:focus-within { border-color: rgba(0,240,255,.5); box-shadow: 0 0 0 1px rgba(0,240,255,.25), 0 0 30px rgba(0,240,255,.12); }
+  .inputbar.img-mode:focus-within, .inputbar.img-mode { border-color: rgba(168,85,247,.55); box-shadow: 0 0 28px rgba(168,85,247,.18); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,240,255,.2); border-radius: 8px; } ::-webkit-scrollbar-thumb:hover { background: rgba(0,240,255,.4); }
+
+  .modal-in { animation: pop .3s cubic-bezier(.2,.9,.3,1.2) both; }
+  @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+  .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+  .chip { transition: all .2s; } .chip:hover { border-color: rgba(0,240,255,.5); background: rgba(0,240,255,.08); transform: translateY(-2px); }
+  textarea { scrollbar-width: thin; }
+  .app { height: 100dvh; }
+</style>
+</head>
+<body class="relative overflow-hidden">
+<div class="orb" style="width:420px;height:420px;background:#00f0ff;top:-120px;left:-100px"></div>
+<div class="orb" style="width:460px;height:460px;background:#a855f7;bottom:-160px;right:-120px;animation-delay:-6s"></div>
+
+<div class="app relative z-10 flex">
+  <!-- overlay (mobile) -->
+  <div id="overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="glass-strong fixed md:static inset-y-0 left-0 z-40 w-[300px] max-w-[86vw] flex flex-col -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <div class="p-4 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(0,240,255,.25),rgba(168,85,247,.3));border:1px solid rgba(0,240,255,.4);box-shadow:0 0 18px rgba(0,240,255,.3)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z"/><path d="M19 17l.8 1.8L21.6 19.6 19.8 20.4 19 22.2l-.8-1.8-1.8-.8 1.8-.8z"/></svg>
+      </div>
+      <div class="leading-tight">
+        <div class="text-xl font-bold tracking-wide neon-text">LAINEX<span class="text-white/80"> AI</span></div>
+        <div class="text-[10px] font-mono text-white/40 tracking-[.2em]">NEURAL INTERFACE v1.0</div>
+      </div>
+      <button id="closeSidebar" class="md:hidden ml-auto p-2 text-white/60 hover:text-white" aria-label="Close sidebar">✕</button>
+    </div>
+
+    <div class="px-4 pb-3">
+      <button id="newChat" class="neon-btn w-full rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> New Session
+      </button>
+    </div>
+
+    <div class="px-4 pb-1 text-[10px] font-mono tracking-[.25em] text-white/35">// SESSIONS</div>
+    <nav id="sessionList" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1"></nav>
+
+    <div class="p-3 border-t border-white/5">
+      <div id="authBox"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 min-w-0 flex flex-col">
+    <header class="glass flex items-center gap-3 px-3 md:px-6 py-3 border-x-0 border-t-0">
+      <button id="openSidebar" class="md:hidden p-2 rounded-lg ghost-btn" aria-label="Open sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      </button>
+      <div class="min-w-0">
+        <div id="chatTitle" class="font-semibold truncate">New Session</div>
+        <div class="text-[11px] font-mono text-white/40 flex items-center gap-2"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span> pollinations.ai · online</div>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span id="authBadge" class="hidden sm:inline-block text-[10px] font-mono tracking-widest px-2.5 py-1 rounded-full border border-white/10 text-white/50">GUEST</span>
+        <button id="headerLogin" class="ghost-btn rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+          <span id="headerLoginInner"></span>
+        </button>
+      </div>
+    </header>
+
+    <section id="chatScroll" class="flex-1 overflow-y-auto">
+      <div id="messages" class="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5"></div>
+    </section>
+
+    <footer class="px-3 md:px-6 pb-3 pt-2" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">
+      <div class="max-w-3xl mx-auto">
+        <div id="inputbar" class="inputbar glass-strong rounded-2xl p-2.5">
+          <div class="flex items-end gap-2">
+            <textarea id="input" rows="1" placeholder="Transmit a message to Lainex…" class="flex-1 bg-transparent resize-none outline-none px-3 py-2.5 text-[15px] placeholder-white/30 max-h-40"></textarea>
+            <button id="sendBtn" class="neon-btn rounded-xl w-11 h-11 flex items-center justify-center flex-shrink-0" aria-label="Send">
+              <svg id="sendIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+            </button>
+          </div>
+          <div class="flex items-center justify-between px-2 pt-1.5">
+            <button id="imgToggle" type="button" class="flex items-center gap-2.5 text-xs text-white/60 hover:text-white transition" aria-pressed="false">
+              <span id="imgSwitch" class="toggle"></span>
+              <span class="flex items-center gap-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Image generation</span>
+            </button>
+            <span class="text-[10px] font-mono text-white/30 hidden sm:block">ENTER to send · SHIFT+ENTER newline</span>
+          </div>
+        </div>
+        <div class="text-center text-[10px] font-mono text-white/25 mt-2">Lainex AI can make mistakes. Powered by Pollinations.</div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+  <div class="modal-in glass-strong rounded-2xl w-full max-w-sm p-6 relative" style="box-shadow:0 0 60px rgba(168,85,247,.2)">
+    <button id="closeModal" class="absolute top-3 right-4 text-white/40 hover:text-white text-lg" aria-label="Close">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+// Optional: paste a real Google OAuth Web Client ID to use real Google Identity Services.
+// Leave empty to use the built-in simulated OAuth flow.
+const GOOGLE_CLIENT_ID = '';
+
+const TEXT_API = 'https://text.pollinations.ai/openai';
+const TEXT_GET = 'https://text.pollinations.ai/';
+const IMG_API  = 'https://image.pollinations.ai/prompt/';
+const SYSTEM_PROMPT = 'You are Lainex AI, a sharp, friendly futuristic assistant. Answer clearly and concisely using Markdown. Put code in fenced code blocks with a language tag.';
+
+const LS_CHATS = 'lainex.chats.v1', LS_ACTIVE = 'lainex.active.v1', LS_USER = 'lainex.user.v1';
+
+/* ================= STATE ================= */
+const $ = (s) => document.querySelector(s);
+const state = {
+  chats: safeParse(localStorage.getItem(LS_CHATS), []),
+  activeId: localStorage.getItem(LS_ACTIVE),
+  user: safeParse(localStorage.getItem(LS_USER), null),
+  imageMode: false,
+  busy: false,
+  abort: null,
+};
+function safeParse(s, d) { try { const v = JSON.parse(s); return v ?? d; } catch { return d; } }
+function save() {
+  try {
+    localStorage.setItem(LS_CHATS, JSON.stringify(state.chats));
+    localStorage.setItem(LS_ACTIVE, state.activeId || '');
+    state.user ? localStorage.setItem(LS_USER, JSON.stringify(state.user)) : localStorage.removeItem(LS_USER);
+  } catch (e) { /* storage full or blocked */ }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const active = () => state.chats.find(c => c.id === state.activeId);
+
+function newChat() {
+  const c = { id: uid(), title: 'New Session', messages: [], ts: Date.now() };
+  state.chats.unshift(c); state.activeId = c.id; save(); return c;
+}
+
+/* ================= MARKDOWN ================= */
+function inline(s) {
+  return s
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+function md(text) {
+  const blocks = [];
+  text = text.replace(/```([\w+-]*)[^\n]*\n?([\s\S]*?)(```|$)/g, (m, lang, code) => {
+    blocks.push({ lang: lang || 'code', code: code.replace(/\n$/, '') });
+    return `\n\u0000B${blocks.length - 1}\u0000\n`;
+  });
+  const lines = esc(text).split('\n');
+  let html = '', list = null, para = [];
+  const flushPara = () => { if (para.length) { html += `<p>${inline(para.join('<br>'))}</p>`; para = []; } };
+  const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+  for (const raw of lines) {
+    const line = raw.trimEnd(); let m;
+    if ((m = line.match(/^\u0000B(\d+)\u0000$/))) {
+      flushPara(); closeList();
+      const b = blocks[+m[1]];
+      html += `<div class="codeblock"><div class="cb-head"><span>${esc(b.lang)}</span><button class="copy-btn" type="button">Copy</button></div><pre><code>${esc(b.code)}</code></pre></div>`;
+    } else if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
+      flushPara(); closeList(); html += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`;
+    } else if ((m = line.match(/^\s*[-*+]\s+(.*)$/))) {
+      flushPara(); if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; } html += `<li>${inline(m[1])}</li>`;
+    } else if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) {
+      flushPara(); if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; } html += `<li>${inline(m[1])}</li>`;
+    } else if ((m = line.match(/^&gt;\s?(.*)$/))) {
+      flushPara(); closeList(); html += `<blockquote>${inline(m[1])}</blockquote>`;
+    } else if (/^\s*([-*_])\1{2,}\s*$/.test(line)) {
+      flushPara(); closeList(); html += '<hr>';
+    } else if (line.trim() === '') {
+      flushPara(); closeList();
+    } else { closeList(); para.push(line); }
+  }
+  flushPara(); closeList();
+  return html;
+}
+
+/* ================= RENDER ================= */
+const messagesEl = $('#messages'), scrollEl = $('#chatScroll');
+function scrollDown(force) {
+  const near = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 160;
+  if (force || near) scrollEl.scrollTop = scrollEl.scrollHeight;
+}
+function avatarHTML(user, size = 36) {
+  if (user?.picture) return `<img src="${user.picture}" alt="" class="rounded-full object-cover" style="width:${size}px;height:${size}px" />`;
+  const initial = esc((user?.name || '?').trim().charAt(0).toUpperCase());
+  return `<div class="rounded-full flex items-center justify-center font-bold text-black" style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#00f0ff,#a855f7);font-size:${size * .42}px">${initial}</div>`;
+}
+const AI_ICON = `<div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(0,240,255,.22),rgba(168,85,247,.28));border:1px solid rgba(0,240,255,.35)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z"/></svg></div>`;
+
+function msgNode(m) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg flex gap-3 ' + (m.role === 'user' ? 'flex-row-reverse' : '');
+  const avatar = m.role === 'user' ? `<div class="flex-shrink-0">${avatarHTML(state.user, 32)}</div>` : AI_ICON;
+  wrap.innerHTML = `${avatar}<div class="bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-ai'} rounded-2xl px-4 py-3 max-w-[88%] min-w-0 ${m.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}"><div class="content md text-[15px] break-words"></div></div>`;
+  const c = wrap.querySelector('.content');
+  if (m.role === 'user') c.innerHTML = `<p>${esc(m.content).replace(/\n/g, '<br>')}</p>`;
+  else if (m.type === 'image') c.innerHTML = imageHTML(m);
+  else c.innerHTML = md(m.content || '');
+  return wrap;
+}
+function imageHTML(m) {
+  return `<p class="!mt-0 text-white/70 text-sm">🎨 <span class="font-mono text-xs text-neon">GENERATED</span> — ${esc(m.prompt || '')}</p>
+  <div class="imgbox relative mt-2 rounded-xl overflow-hidden border border-white/10 shimmer" style="aspect-ratio:1/1;max-width:420px">
+    <img src="${m.url}" alt="${esc(m.prompt || 'generated image')}" class="w-full h-full object-cover opacity-0 transition-opacity duration-700" onload="this.classList.remove('opacity-0');this.parentElement.classList.remove('shimmer')" onerror="this.parentElement.innerHTML='<div class=&quot;p-6 text-sm text-white/50&quot;>Image failed to load. Try regenerating.</div>'" />
+  </div>
+  <a href="${m.url}" target="_blank" rel="noopener" class="inline-block mt-2 text-xs text-neon underline underline-offset-4">Open full size ↗</a>`;
+}
+function emptyState() {
+  const prompts = [
+    ['💡', 'Explain quantum computing like I\'m 12'],
+    ['🧑‍💻', 'Write a JavaScript debounce function'],
+    ['🌆', '/image a neon cyberpunk city in the rain'],
+    ['🚀', 'Give me 5 startup ideas using AI'],
+  ];
+  return `<div class="msg text-center pt-8 md:pt-16">
+    <div class="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-5" style="background:linear-gradient(135deg,rgba(0,240,255,.18),rgba(168,85,247,.25));border:1px solid rgba(0,240,255,.4);box-shadow:0 0 40px rgba(0,240,255,.25)">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z"/><path d="M19 17l.8 1.8L21.6 19.6 19.8 20.4 19 22.2l-.8-1.8-1.8-.8 1.8-.8z"/></svg>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-bold neon-text">${state.user ? 'Welcome back, ' + esc(state.user.name.split(' ')[0]) : 'Welcome to Lainex AI'}</h1>
+    <p class="text-white/50 mt-2 font-mono text-sm">// ask anything. generate anything.</p>
+    <div class="grid sm:grid-cols-2 gap-3 mt-8 text-left">
+      ${prompts.map(p => `<button class="chip glass rounded-xl px-4 py-3 text-sm text-white/80 text-left" data-prompt="${esc(p[1])}"><span class="mr-2">${p[0]}</span>${esc(p[1])}</button>`).join('')}
+    </div></div>`;
+}
+function renderMessages() {
+  const c = active(); messagesEl.innerHTML = '';
+  if (!c || !c.messages.length) { messagesEl.innerHTML = emptyState(); }
+  else c.messages.forEach(m => messagesEl.appendChild(msgNode(m)));
+  $('#chatTitle').textContent = c?.title || 'New Session';
+  scrollDown(true);
+}
+function renderSessions() {
+  const list = $('#sessionList');
+  if (!state.chats.length) { list.innerHTML = '<div class="text-xs text-white/30 font-mono px-2 py-3">no sessions yet</div>'; return; }
+  list.innerHTML = state.chats.map(c => `
+    <div class="session ${c.id === state.activeId ? 'active' : ''} rounded-lg px-3 py-2.5 flex items-center gap-2 cursor-pointer" data-id="${c.id}">
+      <svg class="flex-shrink-0 text-white/40" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="truncate text-sm flex-1">${esc(c.title)}</span>
+      <button class="del p-1" data-del="${c.id}" title="Delete" aria-label="Delete session"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0l1 14h8l1-14"/></svg></button>
+    </div>`).join('');
+}
+const GOOGLE_G = `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>`;
+function renderAuth() {
+  const u = state.user;
+  $('#authBadge').textContent = u ? 'AUTHENTICATED' : 'GUEST';
+  $('#authBadge').className = 'hidden sm:inline-block text-[10px] font-mono tracking-widest px-2.5 py-1 rounded-full border ' + (u ? 'border-emerald-400/40 text-emerald-300 bg-emerald-400/10' : 'border-white/10 text-white/50');
+  $('#headerLoginInner').innerHTML = u ? `<span class="flex items-center gap-2">${avatarHTML(u, 22)}<span class="hidden sm:inline max-w-[120px] truncate">${esc(u.name)}</span></span>` : `<span class="flex items-center gap-2">${GOOGLE_G}<span class="hidden sm:inline">Sign in</span></span>`;
+  $('#authBox').innerHTML = u ? `
+    <div class="glass rounded-xl p-3 flex items-center gap-3">
+      ${avatarHTML(u, 40)}
+      <div class="min-w-0 flex-1"><div class="text-sm font-semibold truncate">${esc(u.name)}</div><div class="text-[11px] text-white/45 font-mono truncate">${esc(u.email)}</div></div>
+      <button id="logoutBtn" class="ghost-btn rounded-lg p-2 text-white/60 hover:text-rose-400" title="Log out" aria-label="Log out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>` : `
+    <button id="googleBtn" class="ghost-btn w-full rounded-xl py-2.5 flex items-center justify-center gap-2.5 text-sm font-medium">${GOOGLE_G} Sign in with Google</button>
+    <div class="text-[10px] font-mono text-white/30 text-center mt-2">guest mode · history saved locally</div>`;
+}
+
+/* ================= TYPEWRITER ================= */
+function typewriter(el) {
+  let full = '', shown = 0, finished = false, timer;
+  let resolveDone; const done = new Promise(r => resolveDone = r);
+  const paint = () => { el.innerHTML = md(full.slice(0, shown)) + (finished && shown >= full.length ? '' : '<span class="cursor"></span>'); scrollDown(); };
+  timer = setInterval(() => {
+    if (shown < full.length) { shown += Math.max(1, Math.ceil((full.length - shown) / 14)); paint(); }
+    else if (finished) { clearInterval(timer); paint(); resolveDone(); }
+  }, 18);
+  return {
+    push(t) { full += t; }, set(t) { full = t; },
+    finish() { finished = true; }, get text() { return full; },
+    flush() { shown = full.length; }, done,
+  };
+}
+
+/* ================= AI CALLS ================= */
+function buildHistory(chat) {
+  const msgs = chat.messages.filter(m => m.content || m.type === 'image').slice(-14).map(m => ({
+    role: m.role, content: m.type === 'image' ? `[Generated an image for the prompt: ${m.prompt}]` : m.content
+  }));
+  return [{ role: 'system', content: SYSTEM_PROMPT }, ...msgs];
+}
+async function streamChat(messages, onDelta, signal) {
+  const res = await fetch(TEXT_API, {
+    method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'openai', messages, stream: true, private: true }),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('event-stream')) { // non-streaming JSON fallback
+    const j = await res.json(); const t = j?.choices?.[0]?.message?.content;
+    if (!t) throw new Error('empty'); onDelta(t); return;
+  }
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '', got = false;
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const parts = buf.split('\n'); buf = parts.pop();
+    for (const p of parts) {
+      const line = p.trim(); if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim(); if (data === '[DONE]') continue;
+      try { const d = JSON.parse(data)?.choices?.[0]?.delta?.content; if (d) { got = true; onDelta(d); } } catch {}
+    }
+  }
+  if (!got) throw new Error('no content');
+}
+async function plainChat(messages, signal) {
+  const convo = messages.filter(m => m.role !== 'system').slice(-6).map(m => `${m.role}: ${m.content}`).join('\n').slice(-1800);
+  const res = await fetch(TEXT_GET + encodeURIComponent(convo + '\nassistant:') + '?model=openai&system=' + encodeURIComponent(SYSTEM_PROMPT), { signal });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.text();
+}
+function imageURL(prompt) {
+  const seed = Math.floor(Math.random() * 1e9);
+  return `${IMG_API}${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=true&seed=${seed}`;
+}
+
+/* ================= SEND ================= */
+function setBusy(b) {
+  state.busy = b;
+  $('#sendIcon').innerHTML = b ? '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>' : '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>';
+  $('#sendBtn').setAttribute('aria-label', b ? 'Stop' : 'Send');
+}
+async function send(textOverride) {
+  if (state.busy) { state.abort?.abort(); return; }
+  const inputEl = $('#input'); let text = (textOverride ?? inputEl.value).trim(); if (!text) return;
+  let asImage = state.imageMode;
+  const cmd = text.match(/^\/(image|img|imagine)\s+(.+)/i);
+  if (cmd) { asImage = true; text = cmd[2]; }
+
+  let chat = active() || newChat();
+  chat.messages.push({ role: 'user', content: (asImage && !state.imageMode ? '/image ' : '') + text });
+  if (chat.title === 'New Session') chat.title = text.length > 38 ? text.slice(0, 38) + '…' : text;
+  chat.ts = Date.now();
+  inputEl.value = ''; autoGrow(); save(); renderSessions();
+  if (chat.messages.length === 1) messagesEl.innerHTML = '';
+  messagesEl.appendChild(msgNode(chat.messages[chat.messages.length - 1]));
+  $('#chatTitle').textContent = chat.title;
+
+  const ai = { role: 'assistant', content: '' };
+  const node = msgNode(ai); const content = node.querySelector('.content');
+  content.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+  messagesEl.appendChild(node); scrollDown(true);
+  setBusy(true); state.abort = new AbortController();
+
+  try {
+    if (asImage) {
+      ai.type = 'image'; ai.prompt = text; ai.url = imageURL(text);
+      content.innerHTML = imageHTML(ai); chat.messages.push(ai); scrollDown(true);
+    } else {
+      const history = buildHistory(chat);
+      const tw = typewriter(content); let ok = false;
+      try {
+        await streamChat(history, d => { if (!ok) ok = true; tw.push(d); }, state.abort.signal);
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        if (!tw.text) tw.set(await plainChat(history, state.abort.signal));
+      }
+      tw.finish(); await tw.done; ai.content = tw.text.trim() || '_No response received._';
+      content.innerHTML = md(ai.content); chat.messages.push(ai);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      const partial = content.textContent.replace(/\s+$/, '');
+      if (!asImage && partial && !content.querySelector('.dots')) { ai.content = partial; chat.messages.push(ai); content.innerHTML = md(partial); }
+      else { node.remove(); }
+    } else {
+      ai.content = '⚠️ **Connection error.** The Pollinations service didn\'t respond. Check your connection and try again.';
+      content.innerHTML = md(ai.content); chat.messages.push(ai);
+    }
+  } finally {
+    setBusy(false); state.abort = null; save(); scrollDown(true); inputEl.focus();
+  }
+}
+
+/* ================= INPUT ================= */
+function autoGrow() { const t = $('#input'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px'; }
+$('#input').addEventListener('input', autoGrow);
+$('#input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+});
+$('#sendBtn').addEventListener('click', () => send());
+$('#imgToggle').addEventListener('click', () => {
+  state.imageMode = !state.imageMode;
+  $('#imgSwitch').classList.toggle('on', state.imageMode);
+  $('#inputbar').classList.toggle('img-mode', state.imageMode);
+  $('#imgToggle').setAttribute('aria-pressed', state.imageMode);
+  $('#input').placeholder = state.imageMode ? 'Describe the image to generate…' : 'Transmit a message to Lainex…';
+  $('#input').focus();
+});
+
+/* ================= SIDEBAR / SESSIONS ================= */
+const openSB = () => { $('#sidebar').classList.remove('-translate-x-full'); $('#overlay').classList.remove('hidden'); };
+const closeSB = () => { $('#sidebar').classList.add('-translate-x-full'); $('#overlay').classList.add('hidden'); };
+$('#openSidebar').addEventListener('click', openSB);
+$('#closeSidebar').addEventListener('click', closeSB);
+$('#overlay').addEventListener('click', closeSB);
+$('#newChat').addEventListener('click', () => {
+  if (state.busy) state.abort?.abort();
+  const cur = active();
+  if (!(cur && cur.messages.length === 0)) newChat();
+  renderSessions(); renderMessages(); closeSB(); $('#input').focus();
+});
+$('#sessionList').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    e.stopPropagation(); const id = del.dataset.del;
+    state.chats = state.chats.filter(c => c.id !== id);
+    if (state.activeId === id) state.activeId = state.chats[0]?.id || null;
+    if (!state.chats.length) newChat();
+    save(); renderSessions(); renderMessages(); return;
+  }
+  const s = e.target.closest('.session'); if (!s) return;
+  if (state.busy) state.abort?.abort();
+  state.activeId = s.dataset.id; save(); renderSessions(); renderMessages(); closeSB();
+});
+messagesEl.addEventListener('click', e => {
+  const chip = e.target.closest('[data-prompt]'); if (chip) { send(chip.dataset.prompt); return; }
+  const btn = e.target.closest('.copy-btn'); if (!btn) return;
+  const code = btn.closest('.codeblock').querySelector('code').textContent;
+  const ok = () => { btn.textContent = 'Copied ✓'; btn.classList.add('done'); setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600); };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(code).then(ok).catch(fallback); else fallback();
+  function fallback() {
+    const ta = document.createElement('textarea'); ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch {} ta.remove();
+  }
+});
+
+/* ================= GOOGLE LOGIN ================= */
+const modal = $('#loginModal'), modalBody = $('#modalBody');
+const openModal = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
+const closeModal = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+$('#closeModal').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function startLogin() {
+  if (state.user) { showProfileModal(); return; }
+  openModal();
+  if (GOOGLE_CLIENT_ID) return realGoogleLogin();
+  modalBody.innerHTML = `
+    <div class="text-center mb-5">
+      <div class="mx-auto w-12 h-12 rounded-full bg-white flex items-center justify-center mb-3">${GOOGLE_G.replace('width="18" height="18"', 'width="26" height="26"')}</div>
+      <div class="text-lg font-semibold">Sign in with Google</div>
+      <div class="text-xs text-white/45 mt-1">to continue to <span class="neon-text font-semibold">Lainex AI</span></div>
+    </div>
+    <form id="loginForm" class="space-y-3">
+      <label class="block"><span class="text-[11px] font-mono tracking-widest text-white/40">NAME</span>
+        <input id="lgName" required maxlength="40" value="Alex Nova" class="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 outline-none focus:border-cyan-400/60 text-sm" /></label>
+      <label class="block"><span class="text-[11px] font-mono tracking-widest text-white/40">GOOGLE EMAIL</span>
+        <input id="lgEmail" type="email" required maxlength="80" value="alex.nova@gmail.com" class="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 outline-none focus:border-cyan-400/60 text-sm" /></label>
+      <button class="neon-btn w-full rounded-xl py-2.5 text-sm mt-2" type="submit">Continue</button>
+    </form>
+    <p class="text-[10px] font-mono text-white/30 text-center mt-4 leading-relaxed">SIMULATED OAUTH · no password is requested and nothing leaves your browser.</p>`;
+  $('#loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('#lgName').value.trim(), email = $('#lgEmail').value.trim();
+    runAuthAnimation({ name, email, picture: null });
+  });
+}
+function runAuthAnimation(user) {
+  const steps = ['Contacting accounts.google.com…', 'Verifying identity token…', 'Granting profile & email scopes…', 'Establishing secure session…'];
+  modalBody.innerHTML = `
+    <div class="text-center py-3">
+      <div class="mx-auto w-14 h-14 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 spin mb-5" style="box-shadow:0 0 25px rgba(0,240,255,.3)"></div>
+      <div class="text-lg font-semibold mb-4">Authenticating</div>
+      <div id="authSteps" class="text-left font-mono text-xs space-y-2 text-white/50"></div>
+    </div>`;
+  const box = $('#authSteps'); let i = 0;
+  const tick = () => {
+    if (i > 0) box.children[i - 1].innerHTML = '<span class="text-emerald-400">✓</span> ' + steps[i - 1];
+    if (i < steps.length) { const d = document.createElement('div'); d.className = 'msg'; d.innerHTML = '<span class="text-neon">›</span> ' + steps[i]; box.appendChild(d); i++; setTimeout(tick, 600); }
+    else setTimeout(() => finishLogin(user), 350);
+  };
+  tick();
+}
+function finishLogin(user) {
+  state.user = user; save(); renderAuth();
+  if (!active()?.messages.length) renderMessages();
+  modalBody.innerHTML = `
+    <div class="text-center py-2">
+      <div class="mx-auto mb-4 w-fit">${avatarHTML(user, 72)}</div>
+      <div class="text-emerald-400 font-mono text-xs tracking-widest mb-1">● ACCESS GRANTED</div>
+      <div class="text-xl font-semibold">${esc(user.name)}</div>
+      <div class="text-sm text-white/50 font-mono">${esc(user.email)}</div>
+      <button id="okModal" class="neon-btn w-full rounded-xl py-2.5 text-sm mt-6">Enter Lainex</button>
+    </div>`;
+  $('#okModal').addEventListener('click', closeModal);
+}
+function showProfileModal() {
+  const u = state.user; openModal();
+  modalBody.innerHTML = `
+    <div class="text-center py-2">
+      <div class="mx-auto mb-4 w-fit">${avatarHTML(u, 72)}</div>
+      <div class="text-emerald-400 font-mono text-[10px] tracking-widest mb-1">● AUTHENTICATED</div>
+      <div class="text-xl font-semibold">${esc(u.name)}</div>
+      <div class="text-sm text-white/50 font-mono">${esc(u.email)}</div>
+      <div class="grid grid-cols-2 gap-2 mt-6">
+        <button id="okModal" class="ghost-btn rounded-xl py-2.5 text-sm">Close</button>
+        <button id="logoutBtn2" class="rounded-xl py-2.5 text-sm border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 transition">Log out</button>
+      </div>
+    </div>`;
+  $('#okModal').addEventListener('click', closeModal);
+  $('#logoutBtn2').addEventListener('click', () => { logout(); closeModal(); });
+}
+function logout() {
+  state.user = null; save(); renderAuth();
+  if (!active()?.messages.length) renderMessages();
+}
+function realGoogleLogin() { // Optional: real Google Identity Services
+  modalBody.innerHTML = '<div class="text-center py-4"><div class="text-sm text-white/60 mb-4">Continue with your Google account</div><div id="gsiBtn" class="flex justify-center"></div></div>';
+  const init = () => {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: (r) => {
+      try {
+        const p = JSON.parse(decodeURIComponent(escape(atob(r.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
+        runAuthAnimation({ name: p.name, email: p.email, picture: p.picture });
+      } catch { modalBody.innerHTML = '<div class="text-center text-rose-300 text-sm">Sign-in failed.</div>'; }
+    } });
+    google.accounts.id.renderButton($('#gsiBtn'), { theme: 'filled_black', size: 'large', shape: 'pill' });
+  };
+  if (window.google?.accounts) return init();
+  const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.onload = init; document.head.appendChild(s);
+}
+$('#headerLogin').addEventListener('click', startLogin);
+$('#authBox').addEventListener('click', e => {
+  if (e.target.closest('#googleBtn')) startLogin();
+  if (e.target.closest('#logoutBtn')) logout();
+});
+
+/* ================= INIT ================= */
+(function init() {
+  if (!state.chats.length) newChat();
+  else if (!active()) { state.activeId = state.chats[0].id; save(); }
+  renderAuth(); renderSessions(); renderMessages();
+})();
+</script>
+</body>
+</html>
